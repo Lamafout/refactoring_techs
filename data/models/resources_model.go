@@ -1,6 +1,6 @@
 package models
 
-type Resources struct {
+type ResourcesModel struct {
 	ID int    `json:"id" db:"id"`
 	Energy float64 `json:"energy" db:"energy"`
 	Water float64 `json:"water" db:"water"`
