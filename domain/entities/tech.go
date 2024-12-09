@@ -13,4 +13,5 @@ type Tech struct {
 	ExpertInfo ExpertInfo `json:"expert_info" bd:"expert_info"`
 	Fccw Fccw `json:"fccw" bd:"fccw"`
 	UserContacts Contacts `json:"user_contacts" bd:"user_contacts"`
+	Cpta Cpta `json:"cpta" bd:"cpta"`
 }
