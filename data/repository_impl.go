@@ -17,7 +17,7 @@ func NewRepositoryImpl(db *sql.DB) *RepositoryImpl {
 }
 
 func (r *RepositoryImpl) GetListOfTechs() (*[]entities.Tech, error) {
-	// TODO add query for get fulll data about techs
+	// TODO add logic for convertng entties nto models and query for get fulll data about techs
 	return nil, nil
 }
 

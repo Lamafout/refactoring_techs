@@ -9,6 +9,12 @@ type ControllerImpl struct {
 	UseCases *service.UseCases
 }
 
-func (c *ControllerImpl) GetTech() (*[]entities.Tech, error) {
+func NewControllerImpl(useCases *service.UseCases) *ControllerImpl {
+	return &ControllerImpl{
+		UseCases: useCases,
+	}
+}
+
+func (c *ControllerImpl) GetTechs() (*[]entities.Tech, error) {
 	return c.UseCases.GetListOfTechs()
 }
