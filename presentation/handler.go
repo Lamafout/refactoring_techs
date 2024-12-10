@@ -3,13 +3,14 @@ package presentation
 import (
 	"encoding/json"
 	"net/http"
+	"refactoring_tech/presentation/controllers"
 )
 
 type Handler struct {
-	TechsController TechsController
+	TechsController controllers.TechsController
 }
 
-func NewHandler(techsController TechsController) *Handler { //initialize the handler
+func NewHandler(techsController controllers.TechsController) *Handler { //initialize the handler
 	return &Handler{
 		TechsController: techsController,
 	}

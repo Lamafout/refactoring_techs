@@ -1,15 +1,14 @@
-package controllers
+package service
 
 import (
-	service "refactoring_tech/domain"
 	"refactoring_tech/domain/entities"
 )
 
 type ControllerImpl struct {
-	UseCases *service.UseCases
+	UseCases *UseCases
 }
 
-func NewControllerImpl(useCases *service.UseCases) *ControllerImpl {
+func NewControllerImpl(useCases *UseCases) *ControllerImpl {
 	return &ControllerImpl{
 		UseCases: useCases,
 	}

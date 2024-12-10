@@ -4,8 +4,7 @@ import (
 	"log"
 	"net/http"
 	db "refactoring_tech/data"
-	service "refactoring_tech/domain"
-	"refactoring_tech/domain/controllers"
+	"refactoring_tech/domain/service"
 	"refactoring_tech/presentation"
 )
 
@@ -33,7 +32,7 @@ func main() {
 	useCases := service.NewUseCases(repo)
 
 	// init controller
-	controller := controllers.NewControllerImpl(useCases)
+	controller := service.NewControllerImpl(useCases)
 
 	// init handler
 	handler := presentation.NewHandler(controller)
