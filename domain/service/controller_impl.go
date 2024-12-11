@@ -14,6 +14,10 @@ func NewControllerImpl(useCases *UseCases) *ControllerImpl {
 	}
 }
 
-func (c *ControllerImpl) GetTechs() (*[]entities.Tech, error) {
+func (c *ControllerImpl) GetTechs() (*[]entities.TechShort, error) {
 	return c.UseCases.GetListOfTechs()
+}
+
+func (c *ControllerImpl) GetTechById(id int) (*entities.Tech, error) {
+	return c.UseCases.GetTechById(id)
 }

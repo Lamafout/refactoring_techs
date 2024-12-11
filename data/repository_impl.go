@@ -17,26 +17,18 @@ func NewRepositoryImpl(db *sql.DB) *RepositoryImpl {
 	}
 }
 
-func (r *RepositoryImpl) GetListOfTechs() (*[]entities.Tech, error) {
+func (r *RepositoryImpl) GetListOfTechs() (*[]entities.TechShort, error) {
 	query := `
 	SELECT 
 			t.id, t.name, t.specs, t.perfomance, 
 			a.id AS assignment_id, a.name AS assignment_name,
-			r.id AS resources_id, r.energy, r.water, r.neutralization_and_disposal,
-			c.id AS contacts_id, c.address, c.phone, c.fax, c.site,
 			u.id AS use_cases_id, u.name AS use_cases_name,
-			e.id AS expert_info_id, e.authority_name, e.date, e.conclusion,
-			f.id AS fccw_id, f.name AS fccw_name, f.code AS fccw_code,
-			cw.id AS secondary_waste_id, cw.mass, cw.volume, cw.fccw AS secondary_waste_fccw_id
+			e.id AS expert_info_id, e.authority_name, e.date, e.conclusion
 	FROM 
 			techs t
 	LEFT JOIN assignments a ON t.assignment = a.id
-	LEFT JOIN resources r ON t.resources = r.id
-	LEFT JOIN contacts c ON t.contacts = c.id
 	LEFT JOIN use_cases u ON t.use_case = u.id
-	LEFT JOIN expert_info e ON t.expert_info = e.id
-	LEFT JOIN fccw f ON t.fccw = f.id
-	LEFT JOIN secondary_waste cw ON t.secondary_waste = cw.id`
+	LEFT JOIN expert_info e ON t.expert_info = e.id`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -45,40 +37,29 @@ func (r *RepositoryImpl) GetListOfTechs() (*[]entities.Tech, error) {
 	}
 	defer rows.Close()
 
-	var techs []entities.Tech
+	var techs []entities.TechShort
 	for rows.Next() {
 		var tech entities.Tech
 		var assignment entities.Assignment
-		var resources entities.Resources
-		var contacts entities.Contacts
 		var useCases entities.UseCases
 		var expertInfo entities.ExpertInfo
-		var fccw entities.Fccw
-		var secondaryWaste entities.SecondaryWaste
 
 		err := rows.Scan(
 			&tech.ID, &tech.Name, &tech.Specs, &tech.Perfomance,
 			&assignment.ID, &assignment.Name,
-			&resources.ID, &resources.Energy, &resources.Water, &resources.NeutralizationAndDisposal,
-			&contacts.ID, &contacts.Address, &contacts.Phone, &contacts.Fax, &contacts.Site,
 			&useCases.ID, &useCases.Name,
 			&expertInfo.ID, &expertInfo.AuthorityNameCharacter, &expertInfo.Date, &expertInfo.Conclusion,
-			&fccw.ID, &fccw.Name, &fccw.Code,
-			&secondaryWaste.ID, &secondaryWaste.Mass, &secondaryWaste.Volume, &secondaryWaste.FccwId,
 		)
 		if err != nil {
+			log.Println(err)
 			return nil, err
 		}
 
 		tech.Assignment = assignment
-		tech.Resources = resources
-		tech.Contacts = contacts
 		tech.UseCases = useCases
 		tech.ExpertInfo = expertInfo
-		tech.Fccw = fccw
-		tech.SecondaryWaste = secondaryWaste
 
-		techs = append(techs, tech)
+		techs = append(techs, *entities.NewTechShortFromTech(tech))
 	}
 
 	if err := rows.Err(); err != nil {
@@ -86,6 +67,68 @@ func (r *RepositoryImpl) GetListOfTechs() (*[]entities.Tech, error) {
 	}
 
 	return &techs, nil
+}
+
+func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
+    query := 
+    `SELECT 
+        t.id, t.name, t.specs, t.perfomance, 
+        a.id AS assignment_id, a.name AS assignment_name,
+        r.id AS resources_id, r.energy, r.water, r.neutralization_and_disposal,
+        c.id AS contacts_id, c.address, c.phone, c.fax, c.site,
+        u.id AS use_cases_id, u.name AS use_cases_name,
+        e.id AS expert_info_id, e.authority_name, e.date, e.conclusion,
+        f.id AS fccw_id, f.name AS fccw_name, f.code AS fccw_code,
+        cw.id AS secondary_waste_id, cw.mass, cw.volume, cw.fccw AS secondary_waste_fccw_id
+    FROM 
+        techs t
+    LEFT JOIN assignments a ON t.assignment = a.id
+    LEFT JOIN resources r ON t.resources = r.id
+    LEFT JOIN contacts c ON t.contacts = c.id
+    LEFT JOIN use_cases u ON t.use_case = u.id
+    LEFT JOIN expert_info e ON t.expert_info = e.id
+    LEFT JOIN fccw f ON t.fccw = f.id
+    LEFT JOIN secondary_waste cw ON t.secondary_waste = cw.id
+    WHERE t.id = ?`
+
+    row := r.db.QueryRow(query, id)
+
+    var tech entities.Tech
+    var assignment entities.Assignment
+    var resources entities.Resources
+    var contacts entities.Contacts
+    var useCases entities.UseCases
+    var expertInfo entities.ExpertInfo
+    var fccw entities.Fccw
+    var secondaryWaste entities.SecondaryWaste
+
+    err := row.Scan(
+        &tech.ID, &tech.Name, &tech.Specs, &tech.Perfomance,
+        &assignment.ID, &assignment.Name,
+        &resources.ID, &resources.Energy, &resources.Water, &resources.NeutralizationAndDisposal,
+        &contacts.ID, &contacts.Address, &contacts.Phone, &contacts.Fax, &contacts.Site,
+        &useCases.ID, &useCases.Name,
+        &expertInfo.ID, &expertInfo.AuthorityNameCharacter, &expertInfo.Date, &expertInfo.Conclusion,
+        &fccw.ID, &fccw.Name, &fccw.Code,
+        &secondaryWaste.ID, &secondaryWaste.Mass, &secondaryWaste.Volume, &secondaryWaste.FccwId,
+    )
+    if err != nil {
+        if err == sql.ErrNoRows {
+            log.Println("Tech not found:", id)
+            return nil, nil
+        }
+        log.Println(err)
+        return nil, err
+    }
+
+    tech.Assignment = assignment
+    tech.Resources = resources
+    tech.Contacts = contacts
+    tech.UseCases = useCases
+    tech.ExpertInfo = expertInfo
+    tech.Fccw = fccw
+
+    return &tech, nil
 }
 
 func ConvertTechToModel(tech entities.Tech) models.TechModel {

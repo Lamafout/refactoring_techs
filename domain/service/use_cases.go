@@ -14,6 +14,10 @@ func NewUseCases(repository Repository) *UseCases {
 	}
 }
 
-func (u *UseCases) GetListOfTechs() (*[]entities.Tech, error) {
+func (u *UseCases) GetListOfTechs() (*[]entities.TechShort, error) {
 	return u.Repository.GetListOfTechs()
+}
+
+func (u *UseCases) GetTechById(id int) (*entities.Tech, error) {
+	return u.Repository.GetConcreteTech(id)
 }

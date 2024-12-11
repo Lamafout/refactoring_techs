@@ -5,5 +5,6 @@ import (
 )
 
 type Repository interface {
-	GetListOfTechs () (*[]entities.Tech, error)
+	GetListOfTechs () (*[]entities.TechShort, error)
+	GetConcreteTech (id int) (*entities.Tech, error)
 }
