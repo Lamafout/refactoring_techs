@@ -10,6 +10,5 @@ type TechModel struct {
 	Contacts int `json:"contacts" bd:"contacts"`
 	UseCases int `json:"use_cases_case" bd:"use_cases_case"`
 	ExpertInfo int `json:"expert_info" bd:"expert_info"`
-	Fccw int `json:"fccw" bd:"fccw"`
 	UserContacts int `json:"user_contacts" bd:"user_contacts"`
 }

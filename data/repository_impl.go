@@ -20,15 +20,19 @@ func NewRepositoryImpl(db *sql.DB) *RepositoryImpl {
 func (r *RepositoryImpl) GetListOfTechs() (*[]entities.TechShort, error) {
 	query := `
 	SELECT 
-			t.id, t.name, t.specs, t.perfomance, 
+			t.id, t.name, t.specs, t.performance, 
 			a.id AS assignment_id, a.name AS assignment_name,
 			u.id AS use_cases_id, u.name AS use_cases_name,
-			e.id AS expert_info_id, e.authority_name, e.date, e.conclusion
+			e.id AS expert_info_id, e.authority_name, e.date, e.conclusion,
+			f.id, f.code, f.name
 	FROM 
 			techs t
 	LEFT JOIN assignments a ON t.assignment = a.id
 	LEFT JOIN use_cases u ON t.use_case = u.id
-	LEFT JOIN expert_info e ON t.expert_info = e.id`
+	LEFT JOIN expert_info e ON t.expert_info = e.id
+	LEFT JOIN fccw_in_tech fit ON t.id = fit.tech
+	LEFT JOIN fccw f ON fit.fccw = f.id
+	`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -38,32 +42,46 @@ func (r *RepositoryImpl) GetListOfTechs() (*[]entities.TechShort, error) {
 	defer rows.Close()
 
 	var techs []entities.TechShort
+	var techMap = make(map[int]*entities.Tech) // Карта для хранения временных объектов Tech
 	for rows.Next() {
 		var tech entities.Tech
 		var assignment entities.Assignment
 		var useCases entities.UseCases
 		var expertInfo entities.ExpertInfo
+		var fccw entities.Fccw
 
 		err := rows.Scan(
 			&tech.ID, &tech.Name, &tech.Specs, &tech.Perfomance,
 			&assignment.ID, &assignment.Name,
 			&useCases.ID, &useCases.Name,
 			&expertInfo.ID, &expertInfo.AuthorityNameCharacter, &expertInfo.Date, &expertInfo.Conclusion,
+			&fccw.ID, &fccw.Code, &fccw.Name,
 		)
 		if err != nil {
 			log.Println(err)
 			return nil, err
 		}
 
-		tech.Assignment = assignment
-		tech.UseCases = useCases
-		tech.ExpertInfo = expertInfo
+		// Если в карте еще нет такого tech, добавляем его
+		if _, exists := techMap[tech.ID]; !exists {
+			tech.Assignment = assignment
+			tech.UseCases = useCases
+			tech.ExpertInfo = expertInfo
+			tech.Fccw = []entities.Fccw{} // Инициализация массива для Fccw
+			techMap[tech.ID] = &tech
+		}
 
-		techs = append(techs, *entities.NewTechShortFromTech(tech))
+		// Добавляем fccw в массив для tech
+		techMap[tech.ID].Fccw = append(techMap[tech.ID].Fccw, fccw)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	// Переводим карту в слайс
+	for _, tech := range techMap {
+		techs = append(techs, *entities.NewTechShortFromTech(*tech))
 	}
 
 	return &techs, nil
@@ -101,7 +119,8 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 	user_contacts.fax AS uc_fax,
 	user_contacts.site AS uc_site,
 	usca.id AS usca_id,
-	usca.name AS usca_name
+	usca.name AS usca_name,
+	ei.id AS ei_id, ei.authority_name, ei.date, ei.conclusion
   FROM 
     techs t
   LEFT JOIN assignments a ON t.assignment = a.id
@@ -111,13 +130,15 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
     FROM sec_in_tech 
     WHERE tech = t.id
   )
-  LEFT JOIN fccw f ON t.fccw = f.id
+  LEFT JOIN fccw_in_tech fit ON fit.tech = t.id
+  LEFT JOIN fccw f ON fit.fccw = f.id
   LEFT JOIN fccw f_sec ON f_sec.id = sw.fccw
   LEFT JOIN cpta_in_tech cit ON cit.tech = t.id
   LEFT JOIN cpta cpta ON cit.cpta = cpta.id
   LEFT JOIN contacts dev_contacts ON t.contacts = dev_contacts.id
   LEFT JOIN contacts user_contacts ON t.user_contacts = user_contacts.id
   LEFT JOIN use_cases usca ON usca.id = t.use_case
+  LEFT JOIN expert_info ei ON t.expert_info = ei.id
   WHERE 
     t.id = $1;
   `
@@ -132,6 +153,7 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 	var tech entities.Tech
 	var secondaryWastes []entities.SecondaryWaste
 	var cptas []entities.Cpta
+	var fccws []entities.Fccw
 
 	for rows.Next() {
 		var assignment entities.Assignment
@@ -142,6 +164,7 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 		var devContacts entities.Contacts
 		var userContacts entities.Contacts
 		var useCases entities.UseCases
+		var expertInfo entities.ExpertInfo
 
 		err := rows.Scan(
 			&tech.ID, &tech.Name, 
@@ -155,26 +178,27 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 			&devContacts.Address, &devContacts.Phone, &devContacts.Fax, &devContacts.Site,
 			&userContacts.Address, &userContacts.Phone, &userContacts.Fax, &userContacts.Site,
 			&useCases.ID, &useCases.Name,
+			&expertInfo.ID, &expertInfo.AuthorityNameCharacter, &expertInfo.Date, &expertInfo.Conclusion,
 		)
 		if err != nil {
 			log.Println("Error scanning row:", err)
 			return nil, err
 		}
 
+
 		tech.Assignment = assignment
 		tech.Resources = resources
-		tech.Fccw = fccw
 		tech.Contacts = devContacts
 		tech.UserContacts = userContacts
 		tech.UseCases = useCases
+		tech.ExpertInfo = expertInfo
 
 		if secondaryWaste.ID != 0 {
 			secondaryWastes = append(secondaryWastes, secondaryWaste)
 		}
 
-		if cpta.ID != 0 {
-			cptas = append(cptas, cpta)
-		}
+		cptas = append(cptas, cpta)
+		fccws = append(fccws, fccw)
 	}
 
 	if err = rows.Err(); err != nil {
@@ -184,6 +208,7 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 
 	tech.SecondaryWaste = secondaryWastes
 	tech.Cpta = cptas
+	tech.Fccw = fccws
 
 	return &tech, nil
 }
@@ -198,7 +223,6 @@ func ConvertTechToModel(tech entities.Tech) models.TechModel {
 		Perfomance:   tech.Perfomance,
 		Contacts:     tech.Contacts.ID,
 		UserContacts: tech.UserContacts.ID,
-		Fccw:         tech.Fccw.ID,
 		UseCases:     tech.UseCases.ID,
 		ExpertInfo:   tech.ExpertInfo.ID,
 	}

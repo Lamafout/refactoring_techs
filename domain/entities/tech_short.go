@@ -7,6 +7,7 @@ type TechShort struct {
 	Specs      string     `json:"specs"`
 	UseCases   UseCases   `json:"useCases"`
 	ExpertInfo ExpertInfo `json:"expertInfo"`
+	Fccw       []Fccw     `json:"fccw"`
 }
 
 func NewTechShortFromTech(tech Tech) *TechShort {
@@ -17,5 +18,6 @@ func NewTechShortFromTech(tech Tech) *TechShort {
 		Specs:      tech.Specs,
 		UseCases:   tech.UseCases,
 		ExpertInfo: tech.ExpertInfo,
+		Fccw:       tech.Fccw,
 	}
 }
