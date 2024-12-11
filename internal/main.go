@@ -42,6 +42,7 @@ func main() {
 
 func startListening(handler *presentation.Handler) {
 	http.HandleFunc("/techs", handler.GetTechsHandler)
+	http.HandleFunc("/tech", handler.GetConcreteTechHandler)
 
 	log.Println("Server is running on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
