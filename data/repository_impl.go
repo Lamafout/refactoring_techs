@@ -85,12 +85,23 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
     sw.id AS secondary_waste_id,
     sw.mass,
     sw.volume,
+	f_sec.code AS sec_fccw_code,
+    f_sec.name AS sec_fccw_name,
 	f.code AS fccw_code,
     f.name AS fccw_name,
     cpta.id AS cpta_id,
-    cpta.name AS cpta_name,
-	t.contacts,
-	t.user_contacts
+	cpta.code,
+    cpta.name,
+	dev_contacts.address AS dc_address,
+	dev_contacts.phone AS dc_phone,
+	dev_contacts.fax AS dc_fax,
+	dev_contacts.site AS dc_site,
+	user_contacts.address AS uc_address,
+	user_contacts.phone AS uc_phone,
+	user_contacts.fax AS uc_fax,
+	user_contacts.site AS uc_site,
+	usca.id AS usca_id,
+	usca.name AS usca_name
   FROM 
     techs t
   LEFT JOIN assignments a ON t.assignment = a.id
@@ -100,11 +111,13 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
     FROM sec_in_tech 
     WHERE tech = t.id
   )
-  LEFT JOIN fccw f ON sw.fccw = f.id
+  LEFT JOIN fccw f ON t.fccw = f.id
+  LEFT JOIN fccw f_sec ON f_sec.id = sw.fccw
   LEFT JOIN cpta_in_tech cit ON cit.tech = t.id
   LEFT JOIN cpta cpta ON cit.cpta = cpta.id
   LEFT JOIN contacts dev_contacts ON t.contacts = dev_contacts.id
   LEFT JOIN contacts user_contacts ON t.user_contacts = user_contacts.id
+  LEFT JOIN use_cases usca ON usca.id = t.use_case
   WHERE 
     t.id = $1;
   `
@@ -125,19 +138,23 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 		var resources entities.Resources
 		var secondaryWaste entities.SecondaryWaste
 		var cpta entities.Cpta
-		var fccwCode sql.NullString
-		var fccwName sql.NullString
-		var devContacts sql.NullInt64
-		var userContacts sql.NullInt64
+		var fccw entities.Fccw
+		var devContacts entities.Contacts
+		var userContacts entities.Contacts
+		var useCases entities.UseCases
 
 		err := rows.Scan(
-			&tech.ID, &tech.Name, &tech.Assignment.ID, &assignment.Name,
-			&tech.Specs, &tech.Resources.ID,
-			&resources.Energy, &resources.Water, &resources.NeutralizationAndDisposal, &tech.Perfomance,
-			&secondaryWaste.ID, &secondaryWaste.Mass, &secondaryWaste.Volume,
-			&fccwCode, &fccwName,
-			&cpta.ID, &cpta.Name,
-			&devContacts, &userContacts,
+			&tech.ID, &tech.Name, 
+			&assignment.ID, &assignment.Name,
+			&tech.Specs, 
+			&resources.ID, &resources.Energy, &resources.Water, &resources.NeutralizationAndDisposal, 
+			&tech.Perfomance,
+			&secondaryWaste.ID, &secondaryWaste.Mass, &secondaryWaste.Volume, &secondaryWaste.Code, &secondaryWaste.Name,
+			&fccw.Code, &fccw.Name,
+			&cpta.ID, &cpta.Code, &cpta.Name, 
+			&devContacts.Address, &devContacts.Phone, &devContacts.Fax, &devContacts.Site,
+			&userContacts.Address, &userContacts.Phone, &userContacts.Fax, &userContacts.Site,
+			&useCases.ID, &useCases.Name,
 		)
 		if err != nil {
 			log.Println("Error scanning row:", err)
@@ -146,11 +163,12 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 
 		tech.Assignment = assignment
 		tech.Resources = resources
+		tech.Fccw = fccw
+		tech.Contacts = devContacts
+		tech.UserContacts = userContacts
+		tech.UseCases = useCases
 
 		if secondaryWaste.ID != 0 {
-			if fccwName.Valid {
-				secondaryWaste.Name = fccwName.String
-			}
 			secondaryWastes = append(secondaryWastes, secondaryWaste)
 		}
 
