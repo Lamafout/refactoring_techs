@@ -70,7 +70,7 @@ func (r *RepositoryImpl) GetListOfTechs() (*[]entities.TechShort, error) {
 }
 
 func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
-    query := `
+	query := `
   SELECT 
     t.id AS tech_id,
     t.name AS tech_name,
@@ -85,9 +85,12 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
     sw.id AS secondary_waste_id,
     sw.mass,
     sw.volume,
+	f.code AS fccw_code,
     f.name AS fccw_name,
     cpta.id AS cpta_id,
-    cpta.name AS cpta_name
+    cpta.name AS cpta_name,
+	t.contacts,
+	t.user_contacts
   FROM 
     techs t
   LEFT JOIN assignments a ON t.assignment = a.id
@@ -100,144 +103,150 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
   LEFT JOIN fccw f ON sw.fccw = f.id
   LEFT JOIN cpta_in_tech cit ON cit.tech = t.id
   LEFT JOIN cpta cpta ON cit.cpta = cpta.id
+  LEFT JOIN contacts dev_contacts ON t.contacts = dev_contacts.id
+  LEFT JOIN contacts user_contacts ON t.user_contacts = user_contacts.id
   WHERE 
     t.id = $1;
   `
 
-    rows, err := r.db.Query(query, id)
-    if err != nil {
-        log.Println("Error executing query:", err)
-        return nil, err
-    }
-    defer rows.Close()
+	rows, err := r.db.Query(query, id)
+	if err != nil {
+		log.Println("Error executing query:", err)
+		return nil, err
+	}
+	defer rows.Close()
 
-    var tech entities.Tech
-    var secondaryWastes []entities.SecondaryWaste
-    var cptas []entities.Cpta
+	var tech entities.Tech
+	var secondaryWastes []entities.SecondaryWaste
+	var cptas []entities.Cpta
 
-    for rows.Next() {
-        var assignment entities.Assignment
-        var resources entities.Resources
-        var secondaryWaste entities.SecondaryWaste
-        var cpta entities.Cpta
-        var fccwName sql.NullString
+	for rows.Next() {
+		var assignment entities.Assignment
+		var resources entities.Resources
+		var secondaryWaste entities.SecondaryWaste
+		var cpta entities.Cpta
+		var fccwCode sql.NullString
+		var fccwName sql.NullString
+		var devContacts sql.NullInt64
+		var userContacts sql.NullInt64
 
-        err := rows.Scan(
-            &tech.ID, &tech.Name, &tech.Assignment.ID, &assignment.Name,
-            &tech.Specs, &tech.Resources.ID,
-            &resources.Energy, &resources.Water, &resources.NeutralizationAndDisposal,
-            &secondaryWaste.ID, &secondaryWaste.Mass, &secondaryWaste.Volume,
-            &fccwName,
-            &cpta.ID, &cpta.Name,
-        )
-        if err != nil {
-            log.Println("Error scanning row:", err)
-            return nil, err
-        }
+		err := rows.Scan(
+			&tech.ID, &tech.Name, &tech.Assignment.ID, &assignment.Name,
+			&tech.Specs, &tech.Resources.ID,
+			&resources.Energy, &resources.Water, &resources.NeutralizationAndDisposal, &tech.Perfomance,
+			&secondaryWaste.ID, &secondaryWaste.Mass, &secondaryWaste.Volume,
+			&fccwCode, &fccwName,
+			&cpta.ID, &cpta.Name,
+			&devContacts, &userContacts,
+		)
+		if err != nil {
+			log.Println("Error scanning row:", err)
+			return nil, err
+		}
 
-        tech.Assignment = assignment
-        tech.Resources = resources
+		tech.Assignment = assignment
+		tech.Resources = resources
 
-        if secondaryWaste.ID != 0 {
-            if fccwName.Valid {
-                secondaryWaste.Name = fccwName.String
-            }
-            secondaryWastes = append(secondaryWastes, secondaryWaste)
-        }
+		if secondaryWaste.ID != 0 {
+			if fccwName.Valid {
+				secondaryWaste.Name = fccwName.String
+			}
+			secondaryWastes = append(secondaryWastes, secondaryWaste)
+		}
 
-        if cpta.ID != 0 {
-            cptas = append(cptas, cpta)
-        }
-    }
+		if cpta.ID != 0 {
+			cptas = append(cptas, cpta)
+		}
+	}
 
-    if err = rows.Err(); err != nil {
-        log.Println("Error iterating rows:", err)
-        return nil, err
-    }
+	if err = rows.Err(); err != nil {
+		log.Println("Error iterating rows:", err)
+		return nil, err
+	}
 
-    tech.SecondaryWaste = secondaryWastes
-    tech.Cpta = cptas
+	tech.SecondaryWaste = secondaryWastes
+	tech.Cpta = cptas
 
-    return &tech, nil
+	return &tech, nil
 }
 
 func ConvertTechToModel(tech entities.Tech) models.TechModel {
 	return models.TechModel{
-		ID: tech.ID,
-		Name: tech.Name,
-		Assignment: tech.Assignment.ID,
-		Specs: tech.Specs,
-		Resources: tech.Resources.ID,
-		Perfomance: tech.Perfomance,
-		Contacts: tech.Contacts.ID,
+		ID:           tech.ID,
+		Name:         tech.Name,
+		Assignment:   tech.Assignment.ID,
+		Specs:        tech.Specs,
+		Resources:    tech.Resources.ID,
+		Perfomance:   tech.Perfomance,
+		Contacts:     tech.Contacts.ID,
 		UserContacts: tech.UserContacts.ID,
-		Fccw: tech.Fccw.ID,
-		UseCases: tech.UseCases.ID,
-		ExpertInfo: tech.ExpertInfo.ID,
+		Fccw:         tech.Fccw.ID,
+		UseCases:     tech.UseCases.ID,
+		ExpertInfo:   tech.ExpertInfo.ID,
 	}
 }
 
 func ConvertContactsToModel(contacts entities.Contacts) models.ContactsModel {
 	return models.ContactsModel{
-		ID: contacts.ID,
+		ID:      contacts.ID,
 		Address: contacts.Address,
-		Fax: contacts.Fax,
-		Phone: contacts.Phone,
-		Site: contacts.Site,
+		Fax:     contacts.Fax,
+		Phone:   contacts.Phone,
+		Site:    contacts.Site,
 	}
 }
 
 func ConvertResourcesToModel(resources entities.Resources) models.ResourcesModel {
 	return models.ResourcesModel{
-		ID: resources.ID,
-		Energy: resources.Energy,
-		Water: resources.Water,
+		ID:                        resources.ID,
+		Energy:                    resources.Energy,
+		Water:                     resources.Water,
 		NeutralizationAndDisposal: resources.NeutralizationAndDisposal,
 	}
 }
 
 func ConvertUseCasesToModel(useCases entities.UseCases) models.UseCasesModel {
 	return models.UseCasesModel{
-		ID: useCases.ID,
+		ID:   useCases.ID,
 		Name: useCases.Name,
 	}
 }
 
 func ConvertExpertInfoToModel(expertInfo entities.ExpertInfo) models.ExpertInfoModel {
 	return models.ExpertInfoModel{
-		ID: expertInfo.ID,
+		ID:                     expertInfo.ID,
 		AuthorityNameCharacter: expertInfo.AuthorityNameCharacter,
-		Date: expertInfo.Date,
-		Conclusion: expertInfo.Conclusion,
+		Date:                   expertInfo.Date,
+		Conclusion:             expertInfo.Conclusion,
 	}
 }
 
 func ConvertAssigmentToModel(assignment entities.Assignment) models.AssignmentsModel {
 	return models.AssignmentsModel{
-		ID: assignment.ID,
+		ID:   assignment.ID,
 		Name: assignment.Name,
 	}
 }
 
 func ConvertToSecTechModel(sec entities.SecondaryWaste, tech entities.Tech) models.SecInTechModel {
 	return models.SecInTechModel{
-		Sec: sec.ID,
+		Sec:  sec.ID,
 		Tech: tech.ID,
 	}
 }
 
 func ConvertSecondaryWasteToModel(sec entities.SecondaryWaste) models.SecondaryWasteModel {
 	return models.SecondaryWasteModel{
-		ID: sec.ID,
-		Mass: sec.Mass,
+		ID:     sec.ID,
+		Mass:   sec.Mass,
 		Volume: sec.Volume,
-		Fccw: sec.FccwId,
+		Fccw:   sec.FccwId,
 	}
 }
 
 func ConvertFccwToModel(fccw entities.Fccw) models.FccwModel {
 	return models.FccwModel{
-		ID: fccw.ID,
+		ID:   fccw.ID,
 		Name: fccw.Name,
 		Code: fccw.Code,
 	}
@@ -245,7 +254,7 @@ func ConvertFccwToModel(fccw entities.Fccw) models.FccwModel {
 
 func ConvertCptaToModel(cpta entities.Cpta) models.CptaModel {
 	return models.CptaModel{
-		ID: cpta.ID,
+		ID:   cpta.ID,
 		Name: cpta.Name,
 		Code: cpta.Code,
 	}
