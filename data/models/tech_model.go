@@ -1,14 +1,13 @@
 package models
 
 type TechModel struct {
-	ID int 		`json:"id" bd:"id"`
-	Name string `json:"name" bd:"name"`
-	Assignment int `json:"assignment" bd:"assignment"`
-	Specs string `json:"specs" bd:"specs"`
-	Resources int `json:"resources" bd:"resources"`
-	Perfomance string `json:"perfomance" bd:"perfomance"`
-	Contacts int `json:"contacts" bd:"contacts"`
-	UseCases int `json:"use_cases_case" bd:"use_cases_case"`
-	ExpertInfo int `json:"expert_info" bd:"expert_info"`
-	UserContacts int `json:"user_contacts" bd:"user_contacts"`
+	ID int 		`json:"id" db:"id"`
+	Name string `json:"name" db:"name"`
+	Assignment int `json:"assignment" db:"assignment"`
+	Specs string `json:"specs" db:"specs"`
+	Resources int `json:"resources" db:"resources"`
+	Perfomance string `json:"perfomance" db:"perfomance"`
+	Contacts int `json:"contacts" db:"contacts"`
+	UseCases int `json:"use_cases_case" db:"use_cases_case"`
+	ExpertInfo int `json:"expert_info" db:"expert_info"`
 }

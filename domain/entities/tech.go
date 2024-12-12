@@ -12,6 +12,6 @@ type Tech struct {
 	UseCases       UseCases         `json:"use_cases_case" bd:"use_cases_case"`
 	ExpertInfo     ExpertInfo       `json:"expert_info" bd:"expert_info"`
 	Fccw           []Fccw           `json:"fccw" bd:"fccw"`
-	UserContacts   Contacts         `json:"user_contacts" bd:"user_contacts"`
+	UserContacts   []Contacts       `json:"user_contacts" bd:"user_contacts"`
 	Cpta           []Cpta           `json:"cpta" bd:"cpta"`
 }

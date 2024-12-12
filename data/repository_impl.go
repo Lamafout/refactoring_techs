@@ -136,7 +136,8 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
   LEFT JOIN cpta_in_tech cit ON cit.tech = t.id
   LEFT JOIN cpta cpta ON cit.cpta = cpta.id
   LEFT JOIN contacts dev_contacts ON t.contacts = dev_contacts.id
-  LEFT JOIN contacts user_contacts ON t.user_contacts = user_contacts.id
+  LEFT JOIN user_in_tech uit ON uit.tech = t.id
+  LEFT JOIN contacts user_contacts ON uit.user = user_contacts.id
   LEFT JOIN use_cases usca ON usca.id = t.use_case
   LEFT JOIN expert_info ei ON t.expert_info = ei.id
   WHERE 
@@ -154,6 +155,7 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 	var secondaryWastes []entities.SecondaryWaste
 	var cptas []entities.Cpta
 	var fccws []entities.Fccw
+	var userContactsArray []entities.Contacts
 
 	for rows.Next() {
 		var assignment entities.Assignment
@@ -189,7 +191,7 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 		tech.Assignment = assignment
 		tech.Resources = resources
 		tech.Contacts = devContacts
-		tech.UserContacts = userContacts
+		tech.UserContacts = userContactsArray
 		tech.UseCases = useCases
 		tech.ExpertInfo = expertInfo
 
@@ -199,6 +201,7 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 
 		cptas = append(cptas, cpta)
 		fccws = append(fccws, fccw)
+		userContactsArray = append(userContactsArray, userContacts)
 	}
 
 	if err = rows.Err(); err != nil {
@@ -209,6 +212,7 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 	tech.SecondaryWaste = secondaryWastes
 	tech.Cpta = cptas
 	tech.Fccw = fccws
+	tech.UserContacts = userContactsArray
 
 	return &tech, nil
 }
@@ -222,7 +226,6 @@ func ConvertTechToModel(tech entities.Tech) models.TechModel {
 		Resources:    tech.Resources.ID,
 		Perfomance:   tech.Perfomance,
 		Contacts:     tech.Contacts.ID,
-		UserContacts: tech.UserContacts.ID,
 		UseCases:     tech.UseCases.ID,
 		ExpertInfo:   tech.ExpertInfo.ID,
 	}
