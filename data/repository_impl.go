@@ -217,6 +217,44 @@ func (r *RepositoryImpl) GetConcreteTech(id int) (*entities.Tech, error) {
 	return &tech, nil
 }
 
+func (r *RepositoryImpl) InsertProducer(producer entities.Producer) error {
+	var fccwID int
+	err := r.db.QueryRow(`SELECT id FROM fccw WHERE code = $1`, producer.Fccw).Scan(&fccwID)
+	if err != nil {
+		log.Fatalf("Failed to find fccw id: %v", err)
+	}
+
+	var producerID int
+	err = r.db.QueryRow(`
+		INSERT INTO producers (municipality, fccw, hazard_class, organization)
+		VALUES ($1, $2, $3, $4) RETURNING id`,
+		producer.Municipality, fccwID, producer.HazardClass, producer.Organization).Scan(&producerID)
+	if err != nil {
+		log.Fatalf("Erorr: %v", err)
+	}
+
+	for _, wasteType := range producer.WasteType {
+		var wasteTypeID int
+		err := r.db.QueryRow(`
+			INSERT INTO waste_types (type) 
+			VALUES ($1) ON CONFLICT (type) DO UPDATE SET type = EXCLUDED.type
+			RETURNING id`, wasteType.Type).Scan(&wasteTypeID)
+		if err != nil {
+			log.Fatalf("Erorr: %v", err)
+		}
+
+		_, err = r.db.Exec(`
+			INSERT INTO waste_types_in_producers (producer_id, waste_type_id) 
+			VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+			producerID, wasteTypeID)
+		if err != nil {
+			log.Fatalf("Failed to insert new producer: %v", err)
+		}
+	}
+
+	return nil
+}
+
 func ConvertTechToModel(tech entities.Tech) models.TechModel {
 	return models.TechModel{
 		ID:           tech.ID,

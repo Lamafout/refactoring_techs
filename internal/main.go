@@ -35,7 +35,7 @@ func main() {
 	controller := service.NewControllerImpl(useCases)
 
 	// init handler
-	handler := presentation.NewHandler(controller)
+	handler := presentation.NewHandler(controller, controller)
 
 	startListening(handler)
 }

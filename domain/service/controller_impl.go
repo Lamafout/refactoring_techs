@@ -21,3 +21,7 @@ func (c *ControllerImpl) GetTechs() (*[]entities.TechShort, error) {
 func (c *ControllerImpl) GetTechById(id int) (*entities.Tech, error) {
 	return c.UseCases.GetTechById(id)
 }
+
+func (c *ControllerImpl) InsertProducer(producer entities.Producer) error {
+	return c.UseCases.InsertProducer(producer)
+}
