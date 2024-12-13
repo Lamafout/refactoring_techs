@@ -5,17 +5,17 @@ import (
 	"net/http"
 	db "refactoring_tech/data"
 	"refactoring_tech/domain/service"
-	"refactoring_tech/presentation"
+	"refactoring_tech/presentation/handlers"
 )
 
 func main() {
 	// init config
 	config := db.Config{
-		Host: "localhost",
-		Port: "5432",
-		User: "postgres",
+		Host:     "localhost",
+		Port:     "5432",
+		User:     "postgres",
 		Password: "1234",
-		DbName: "refactoring_tech",
+		DbName:   "refactoring_tech",
 	}
 
 	//init connection
@@ -34,15 +34,17 @@ func main() {
 	// init controller
 	controller := service.NewControllerImpl(useCases)
 
-	// init handler
-	handler := presentation.NewHandler(controller, controller)
+	// init handlers
+	techHandler := handlers.NewTechHandler(controller)
+	producerHandler := handlers.NewProducerHandler(controller)
 
-	startListening(handler)
+	startListening(techHandler, producerHandler)
 }
 
-func startListening(handler *presentation.Handler) {
-	http.HandleFunc("/techs", handler.GetTechsHandler)
-	http.HandleFunc("/tech", handler.GetConcreteTechHandler)
+func startListening(techHandler *handlers.TechHandler, producerHandler *handlers.ProducerHandler) {
+	http.HandleFunc("/techs", techHandler.GetTechsHandler)
+	http.HandleFunc("/tech", techHandler.TechHandler)
+	http.HandleFunc("/producer", producerHandler.ProducerHandler)
 
 	log.Println("Server is running on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {

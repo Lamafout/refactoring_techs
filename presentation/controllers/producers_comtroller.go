@@ -2,6 +2,6 @@ package controllers
 
 import "refactoring_tech/domain/entities"
 
-type ProducersController interface {
+type ProducerController interface {
 	InsertProducer(producer entities.Producer) error
 }
